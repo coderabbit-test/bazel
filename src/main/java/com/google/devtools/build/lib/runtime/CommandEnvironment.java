@@ -137,7 +137,6 @@ public class CommandEnvironment {
   private final DelegatingDownloader delegatingDownloader;
   private final RemoteAnalysisCachingEventListener remoteAnalysisCachingEventListener;
   private final ImmutableList.Builder<IdleTask> idleTasks = ImmutableList.builder();
-  private final ResourceManager resourceManager;
 
   private boolean mergedAnalysisAndExecution;
 
@@ -234,8 +233,7 @@ public class CommandEnvironment {
       CommandExtensionReporter commandExtensionReporter,
       int attemptNumber,
       @Nullable String buildRequestIdOverride,
-      ConfigFlagDefinitions configFlagDefinitions,
-      ResourceManager resourceManager) {
+      ConfigFlagDefinitions configFlagDefinitions) {
     checkArgument(attemptNumber >= 1);
 
     this.runtime = runtime;
@@ -256,7 +254,6 @@ public class CommandEnvironment {
     this.timestampGranularityMonitor = new TimestampGranularityMonitor(runtime.getClock());
     this.attemptNumber = attemptNumber;
     this.configFlagDefinitions = configFlagDefinitions;
-    this.resourceManager = resourceManager;
 
     // Record the command's starting time again, for use by
     // TimestampGranularityMonitor.waitForTimestampGranularity().
@@ -358,6 +355,9 @@ public class CommandEnvironment {
         value = clientEnv.get(name);
       }
       if (value != null) {
+        if (workspace.getWorkspace() != null) {
+          value = value.replace("%bazel_workspace%", workspace.getWorkspace().getPathString());
+        }
         repoEnv.put(name, value);
         repoEnvFromOptions.put(name, value);
       }
@@ -715,7 +715,7 @@ public class CommandEnvironment {
   }
 
   public ResourceManager getLocalResourceManager() {
-    return resourceManager;
+    return ResourceManager.instance();
   }
 
   /**
