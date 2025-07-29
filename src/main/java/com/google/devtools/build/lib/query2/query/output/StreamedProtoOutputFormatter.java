@@ -113,12 +113,25 @@ public class StreamedProtoOutputFormatter extends ProtoOutputFormatter {
   private static byte[] writeDelimited(Build.Target targetProtoBuffer) {
     try {
       var serializedSize = targetProtoBuffer.getSerializedSize();
-      var headerSize = CodedOutputStream.computeUInt32SizeNoTag(serializedSize);
-      var output = new byte[headerSize + serializedSize];
-      var codedOut = CodedOutputStream.newInstance(output, headerSize, output.length - headerSize);
-      targetProtoBuffer.writeTo(codedOut);
-      codedOut.flush();
+-     var headerSize = CodedOutputStream.computeUInt32SizeNoTag(serializedSize);
+-     var output = new byte[headerSize + serializedSize];
+-     var codedOut = CodedOutputStream.newInstance(output, headerSize, output.length - headerSize);
+-     targetProtoBuffer.writeTo(codedOut);
++     int headerSize = CodedOutputStream.computeUInt32SizeNoTag(serializedSize);
++     byte[] output = new byte[headerSize + serializedSize];
++
++     // 1. write the var-int length prefix
++     CodedOutputStream headerOut = CodedOutputStream.newInstance(output, 0, headerSize);
++     headerOut.writeUInt32NoTag(serializedSize);
++     headerOut.flush();
++
++     // 2. write the message bytes immediately after the prefix
++     CodedOutputStream bodyOut =
++         CodedOutputStream.newInstance(output, headerSize, serializedSize);
++     targetProtoBuffer.writeTo(bodyOut);
++     bodyOut.flush();
       return output;
+    }
     } catch (IOException e) {
       throw new WrappedIOException(e);
     }
